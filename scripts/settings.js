@@ -1,281 +1,354 @@
-function toggleAvatarSelect() {
-  var avatarSelect = document.getElementById("avatarSelect");
-  if (avatarSelect.classList.contains("is-open")) {
-    avatarSelect.classList.remove("is-open");
-  } else {
-    avatarSelect.classList.add("is-open");
+const saveIconContent = '<i class="fa-solid fa-check"></i>';
+const deleteIconContent = '<i class="fa-solid fa-trash-can"></i>';
+
+function saveMonthlyBudget() {
+  const button = document.getElementById("saveMonthlyBudget");
+  button.disabled = true;
+
+  const budget = Number(document.getElementById("monthly_budget").value || 0);
+
+  if (Number.isNaN(budget) || budget < 0) {
+    showErrorMessage(translate("invalid_budget"));
+    button.disabled = false;
+    return;
   }
-}
 
-function closeAvatarSelect() {
-  var avatarSelect = document.getElementById("avatarSelect");
-  avatarSelect.classList.remove("is-open");
-}
-
-document.querySelectorAll('.avatar-option').forEach((avatar) => {
-    avatar.addEventListener("click", () => {
-        changeAvatar(avatar.src);
-        document.getElementById('avatarUser').value = avatar.getAttribute('data-src');
-        closeAvatarSelect();
-    })
-});
-
-function changeAvatar(src) {
-    document.getElementById("avatarImg").src = src;
-}
-
-function successfulUpload(field, msg) {
-    var reader = new FileReader();
-
-    if (field.files.length === 0) {
-      return;
-    }
-  
-    if (! ['image/jpeg', 'image/png', 'image/gif', 'image/jtif', 'image/webp'].includes(field.files[0]['type'])) {
-      showErrorMessage(msg);
-      return;
-    }
-
-    reader.onload = function() {
-        changeAvatar(reader.result);
-    };
-
-    reader.readAsDataURL(field.files[0]);
-    closeAvatarSelect();
-}
-
-function deleteAvatar(path) {
-  fetch('/endpoints/user/delete_avatar.php', {
+  fetch('endpoints/user/budget.php', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'X-CSRF-Token': window.csrfToken,
     },
-    body: JSON.stringify({ avatar: path }),
+    body: JSON.stringify({ monthly_budget: budget }),
   })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      var avatarContainer = document.querySelector(`.avatar-container[data-src="${path}"]`);
-      if (avatarContainer) {
-        avatarContainer.remove();
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        showSuccessMessage(data.message);
+      } else {
+        showErrorMessage(data.message || translate('unknown_error'));
       }
-      showSuccessMessage();
-    } else {
-      showErrorMessage();
-    }
-  })
-  .catch((error) => {
-    console.error('Error:', error);
-  });
-}
-
-function addMemberButton(memberId) {
-  document.getElementById("addMember").disabled = true;
-  const url = 'endpoints/household/household.php?action=add';
-  fetch(url)
-  .then(response => {
-    if (!response.ok) {
-      throw new Error(translate('network_response_error'));
-      showErrorMessage(translate('failed_add_member'));
-    }
-    return response.json();
-  })
-  .then(responseData => {
-    if(responseData.success) {
-      const newMemberId = responseData.householdId;;
-      let container = document.getElementById("householdMembers");
-      let div = document.createElement("div");
-      div.className = "form-group-inline";
-      div.dataset.memberid = newMemberId;
-
-      let input = document.createElement("input");
-      input.type = "text";
-      input.placeholder = translate('member');
-      input.name = "member";
-      input.value = translate('member');
-
-      let emailInput = document.createElement("input");
-      emailInput.type = "text";
-      emailInput.placeholder = translate('email');
-      emailInput.name = "email";
-      emailInput.value = "";      
-
-      let editLink = document.createElement("button");
-      editLink.className = "image-button medium"
-      editLink.name = "save";
-      editLink.onclick = function() {
-        editMember(newMemberId);
-      };
-
-      let editImage = document.createElement("img");
-      editImage.src = "images/siteicons/" + colorTheme + "/save.png";
-      editImage.title = translate('save_member');
-
-      editLink.appendChild(editImage);
-
-      let deleteLink = document.createElement("button");
-      deleteLink.className = "image-button medium"
-      deleteLink.name = "delete";
-      deleteLink.onclick = function() {
-        removeMember(newMemberId);
-      };
-
-      let deleteImage = document.createElement("img");
-      deleteImage.src = "images/siteicons/" + colorTheme + "/delete.png";
-      deleteImage.title = translate('delete_member');
-
-      deleteLink.appendChild(deleteImage);
-
-      div.appendChild(input);
-      div.appendChild(emailInput);
-      div.appendChild(editLink);
-      div.appendChild(deleteLink);
-
-      container.appendChild(div);
-    } else {
-      showErrorMessage(responseData.errorMessage);
-    }
-    document.getElementById("addMember").disabled = false;
-  })
-  .catch(error => {
-    showErrorMessage(translate('failed_add_member'));
-    document.getElementById("addMember").disabled = false;
-  });
-
-}
-
-function removeMember(memberId) {
-  let url = `endpoints/household/household.php?action=delete&memberId=${memberId}`;
-  fetch(url)
-    .then(response => {
-      if (!response.ok) {
-        throw new Error(translate('network_response_error'));
-      }
-      return response.json();
-    })
-    .then(responseData => {
-     if (responseData.success) {
-      let divToRemove = document.querySelector(`[data-memberid="${memberId}"]`);
-      if (divToRemove) {
-        divToRemove.parentNode.removeChild(divToRemove);
-      }
-      showSuccessMessage(responseData.message);
-     } else {
-      showErrorMessage(responseData.errorMessage || translate('failed_remove_member'));
-     }
     })
     .catch(error => {
-      showErrorMessage(translate('failed_remove_member'));
+      console.error(error);
+      showErrorMessage(translate('unknown_error'));
+    })
+    .finally(() => {
+      button.disabled = false;
     });
 }
 
+function savePeriodBudget() {
+  const button = document.getElementById("savePeriodBudget");
+  button.disabled = true;
+
+  const budget = Number(document.getElementById("period_budget").value || 0);
+  const budgetPeriodType = document.getElementById("budget_period_type").value;
+  const budgetPeriodAnchorDateInput = document.getElementById("budget_period_anchor_date");
+  let budgetPeriodAnchorDate = budgetPeriodAnchorDateInput.value;
+  const validPeriodTypes = ["weekly", "fortnightly", "monthly"];
+
+  if (!budgetPeriodAnchorDate || budgetPeriodAnchorDate === "1970-01-01") {
+    const today = new Date();
+    const month = `${today.getMonth() + 1}`.padStart(2, "0");
+    const day = `${today.getDate()}`.padStart(2, "0");
+    budgetPeriodAnchorDate = `${today.getFullYear()}-${month}-${day}`;
+    budgetPeriodAnchorDateInput.value = budgetPeriodAnchorDate;
+  }
+
+  if (Number.isNaN(budget) || budget < 0) {
+    showErrorMessage(translate("invalid_budget"));
+    button.disabled = false;
+    return;
+  }
+
+  if (!validPeriodTypes.includes(budgetPeriodType)) {
+    showErrorMessage(translate("invalid_budget_period"));
+    button.disabled = false;
+    return;
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(budgetPeriodAnchorDate)) {
+    showErrorMessage(translate("invalid_budget_anchor_date"));
+    button.disabled = false;
+    return;
+  }
+
+  fetch('endpoints/user/budget.php', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': window.csrfToken,
+    },
+    body: JSON.stringify({
+      period_budget: budget,
+      budget_period_type: budgetPeriodType,
+      budget_period_anchor_date: budgetPeriodAnchorDate,
+    }),
+  })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        showSuccessMessage(data.message);
+      } else {
+        showErrorMessage(data.message || translate('unknown_error'));
+      }
+    })
+    .catch(error => {
+      console.error(error);
+      showErrorMessage(translate('unknown_error'));
+    })
+    .finally(() => {
+      button.disabled = false;
+    });
+}
+
+
+function addMemberButton(memberId) {
+  const addButton = document.getElementById("addMember");
+  addButton.disabled = true;
+
+  fetch("endpoints/household/household.php", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      'X-CSRF-Token': window.csrfToken,
+    },
+    body: new URLSearchParams({action: "add"}),
+  })
+    .then(response => {
+      if (!response.ok) {
+        showErrorMessage(translate("failed_add_member"));
+        throw new Error(translate("network_response_error"));
+      }
+      return response.json();
+    })
+    .then(responseData => {
+      if (responseData.success) {
+        const newMemberId = responseData.householdId;
+        const container = document.getElementById("householdMembers");
+
+        const div = document.createElement("div");
+        div.className = "form-group-inline";
+        div.dataset.memberid = newMemberId;
+
+        const input = document.createElement("input");
+        input.type = "text";
+        input.placeholder = translate("member");
+        input.name = "member";
+        input.value = translate("member");
+
+        const emailInput = document.createElement("input");
+        emailInput.type = "text";
+        emailInput.placeholder = translate("email");
+        emailInput.name = "email";
+        emailInput.value = "";
+
+        const editLink = document.createElement("button");
+        editLink.className = "image-button medium";
+        editLink.name = "save";
+        editLink.onclick = () => editMember(newMemberId);
+        editLink.innerHTML = saveIconContent;
+        editLink.title = translate("save_member");
+
+        const deleteLink = document.createElement("button");
+        deleteLink.className = "image-button medium";
+        deleteLink.name = "delete";
+        deleteLink.onclick = () => removeMember(newMemberId);
+        deleteLink.innerHTML = deleteIconContent;
+        deleteLink.title = translate("delete_member");
+
+        div.appendChild(input);
+        div.appendChild(emailInput);
+        div.appendChild(editLink);
+        div.appendChild(deleteLink);
+
+        container.appendChild(div);
+      } else {
+        showErrorMessage(responseData.message || translate("failed_add_member"));
+      }
+    })
+    .catch(error => {
+      console.error(error);
+      showErrorMessage(translate("failed_add_member"));
+    })
+    .finally(() => {
+      addButton.disabled = false;
+    });
+}
+
+function removeMember(memberId) {
+  fetch("endpoints/household/household.php", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      'X-CSRF-Token': window.csrfToken,
+    },
+    body: new URLSearchParams({
+      action: "delete",
+      memberId: memberId,
+    }),
+  })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(translate("network_response_error"));
+      }
+      return response.json();
+    })
+    .then(responseData => {
+      if (responseData.success) {
+        const divToRemove = document.querySelector(`[data-memberid="${memberId}"]`);
+        if (divToRemove) divToRemove.remove();
+        showSuccessMessage(responseData.message);
+      } else {
+        showErrorMessage(responseData.message || translate("failed_remove_member"));
+      }
+    })
+    .catch(error => {
+      console.error(error);
+      showErrorMessage(translate("failed_remove_member"));
+    });
+}
+
+
 function editMember(memberId) {
-  var saveButton = document.querySelector(`div[data-memberid="${memberId}"] button[name="save"]`);
-  var memberNameElement = document.querySelector(`div[data-memberid="${memberId}"] input[name="member"]`);
-  var memberEmailElement = document.querySelector(`div[data-memberid="${memberId}"] input[name="email"]`);
+  const saveButton = document.querySelector(`div[data-memberid="${memberId}"] button[name="save"]`);
+  const memberNameElement = document.querySelector(`div[data-memberid="${memberId}"] input[name="member"]`);
+  const memberEmailElement = document.querySelector(`div[data-memberid="${memberId}"] input[name="email"]`);
+
+  if (!memberNameElement) return;
+
   saveButton.classList.add("disabled");
   saveButton.disabled = true;
-  if (memberNameElement) {
-    var memberName = encodeURIComponent(memberNameElement.value);
-    var memberEmail = memberEmailElement ? encodeURIComponent(memberEmailElement.value) : '';
-    var url = `endpoints/household/household.php?action=edit&memberId=${memberId}&name=${memberName}&email=${memberEmail}`;
 
-    fetch(url)
-      .then(response => {
-        saveButton.classList.remove("disabled");
-        if (!response.ok) {
-          showErrorMessage(translate('failed_save_member'));
-        }
-        return response.json();
-      })
-      .then(responseData => {
-        if (responseData.success) {
-          showSuccessMessage(responseData.message);
-        } else {
-          showErrorMessage(responseData.errorMessage || translate('failed_save_member'));
-        }
-      })
-      .catch(error => {
-        showErrorMessage(translate('failed_save_member'));
-      });
-  }
+  const memberName = memberNameElement.value;
+  const memberEmail = memberEmailElement ? memberEmailElement.value : "";
+
+  fetch("endpoints/household/household.php", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      'X-CSRF-Token': window.csrfToken,
+    },
+    body: new URLSearchParams({
+      action: "edit",
+      memberId: memberId,
+      name: memberName,
+      email: memberEmail,
+    }),
+  })
+    .then(response => {
+      if (!response.ok) {
+        showErrorMessage(translate("failed_save_member"));
+        throw new Error(translate("network_response_error"));
+      }
+      return response.json();
+    })
+    .then(responseData => {
+      if (responseData.success) {
+        showSuccessMessage(responseData.message);
+      } else {
+        showErrorMessage(responseData.message || translate("failed_save_member"));
+      }
+    })
+    .catch(error => {
+      console.error(error);
+      showErrorMessage(translate("failed_save_member"));
+    })
+    .finally(() => {
+      saveButton.classList.remove("disabled");
+      saveButton.disabled = false;
+    });
 }
+
 
 function addCategoryButton(categoryId) {
-  document.getElementById("addCategory").disabled = true;
-  const url = 'endpoints/categories/category.php?action=add';
-  fetch(url)
-  .then(response => {
-    if (!response.ok) {
-      throw new Error(translate('network_response_error'));
+  const addButton = document.getElementById("addCategory");
+  addButton.disabled = true;
+
+  fetch('endpoints/categories/category.php', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'X-CSRF-Token': window.csrfToken,
+    },
+    body: new URLSearchParams({action: 'add'}),
+  })
+    .then(response => {
+      if (!response.ok) {
+        showErrorMessage(translate('failed_add_category'));
+        throw new Error(translate('network_response_error'));
+      }
+      return response.json();
+    })
+    .then(responseData => {
+      if (responseData.success) {
+        const newCategoryId = responseData.categoryId;
+        const container = document.getElementById("categories");
+
+        const row = document.createElement("div");
+        row.className = "form-group-inline";
+        row.dataset.categoryid = newCategoryId;
+
+        const dragIcon = document.createElement("div");
+        dragIcon.className = "drag-icon";
+        dragIcon.innerHTML = '<i class="fa-solid fa-grip-vertical"></i>';
+
+        const input = document.createElement("input");
+        input.type = "text";
+        input.placeholder = translate('category');
+        input.name = "category";
+        input.value = translate('category');
+
+        const editLink = document.createElement("button");
+        editLink.className = "image-button medium";
+        editLink.name = "save";
+        editLink.onclick = function () {
+          editCategory(newCategoryId);
+        };
+        editLink.innerHTML = saveIconContent;
+        editLink.title = translate('save_member');
+
+        const deleteLink = document.createElement("button");
+        deleteLink.className = "image-button medium";
+        deleteLink.name = "delete";
+        deleteLink.onclick = function () {
+          removeCategory(newCategoryId);
+        };
+        deleteLink.innerHTML = deleteIconContent;
+        deleteLink.title = translate('delete_member');
+
+        row.appendChild(dragIcon);
+        row.appendChild(input);
+        row.appendChild(editLink);
+        row.appendChild(deleteLink);
+        container.appendChild(row);
+      } else {
+        showErrorMessage(responseData.message);
+      }
+    })
+    .catch(error => {
+      console.error(error);
       showErrorMessage(translate('failed_add_category'));
-    }
-    return response.json();
-  })
-  .then(responseData => {
-    if(responseData.success) {
-      const newCategoryId = responseData.categoryId;;
-      let container = document.getElementById("categories");
-      let row = document.createElement("div");
-      row.className = "form-group-inline";
-      row.dataset.categoryid = newCategoryId;
-
-      let dragIcon = document.createElement("div");
-      dragIcon.className = "drag-icon";
-
-      let input = document.createElement("input");
-      input.type = "text";
-      input.placeholder = translate('category');
-      input.name = "category";
-      input.value = translate('category');
-
-      let editLink = document.createElement("button");
-      editLink.className = "image-button medium"
-      editLink.name = "save";
-      editLink.onclick = function() {
-        editCategory(newCategoryId);
-      };
-
-      let editImage = document.createElement("img");
-      editImage.src = "images/siteicons/" + colorTheme + "/save.png";
-      editImage.title = translate('save_category');
-
-      editLink.appendChild(editImage);
-
-      let deleteLink = document.createElement("button");
-      deleteLink.className = "image-button medium"
-      deleteLink.name = "delete";
-      deleteLink.onclick = function() {
-        removeCategory(newCategoryId);
-      };
-
-      let deleteImage = document.createElement("img");
-      deleteImage.src = "images/siteicons/"  + colorTheme + "/delete.png";
-      deleteImage.title = translate('delete_category');
-
-      deleteLink.appendChild(deleteImage);
-
-      row.appendChild(dragIcon);
-      row.appendChild(input);
-      row.appendChild(editLink);
-      row.appendChild(deleteLink);
-
-      container.appendChild(row);
-    } else {
-      showErrorMessage(responseData.errorMessage);
-    }
-    document.getElementById("addCategory").disabled = false;
-  })
-  .catch(error => {
-    showErrorMessage(translate('failed_add_category'));
-    document.getElementById("addCategory").disabled = false;
-  });
-
+    })
+    .finally(() => {
+      addButton.disabled = false;
+    });
 }
 
+
 function removeCategory(categoryId) {
-  let url = `endpoints/categories/category.php?action=delete&categoryId=${categoryId}`;
-  fetch(url)
+  fetch('endpoints/categories/category.php', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'X-CSRF-Token': window.csrfToken,
+    },
+    body: new URLSearchParams({
+      action: 'delete',
+      categoryId: categoryId,
+    }),
+  })
     .then(response => {
       if (!response.ok) {
         throw new Error(translate('network_response_error'));
@@ -283,235 +356,288 @@ function removeCategory(categoryId) {
       return response.json();
     })
     .then(responseData => {
-     if (responseData.success) {
-      let divToRemove = document.querySelector(`[data-categoryid="${categoryId}"]`);
-      if (divToRemove) {
-        divToRemove.parentNode.removeChild(divToRemove);
+      if (responseData.success) {
+        const divToRemove = document.querySelector(`[data-categoryid="${categoryId}"]`);
+        if (divToRemove) divToRemove.remove();
+        showSuccessMessage(responseData.message);
+      } else {
+        showErrorMessage(responseData.message || translate('failed_remove_category'));
       }
-      showSuccessMessage(responseData.message);
-     } else {
-      showErrorMessage(responseData.errorMessage || translate('failed_remove_category'));
-     }
     })
     .catch(error => {
+      console.error(error);
       showErrorMessage(translate('failed_remove_category'));
     });
 }
 
+
 function editCategory(categoryId) {
-  var saveButton = document.querySelector(`div[data-categoryid="${categoryId}"] button[name="save"]`);
-  var inputElement = document.querySelector(`div[data-categoryid="${categoryId}"] input[name="category"]`);
-  
+  const saveButton = document.querySelector(`div[data-categoryid="${categoryId}"] button[name="save"]`);
+  const inputElement = document.querySelector(`div[data-categoryid="${categoryId}"] input[name="category"]`);
+
+  if (!inputElement) return;
+
   saveButton.classList.add("disabled");
   saveButton.disabled = true;
-  if (inputElement) {
-    var categoryName = encodeURIComponent(inputElement.value);
-    var url = `endpoints/categories/category.php?action=edit&categoryId=${categoryId}&name=${categoryName}`;
 
-    fetch(url)
-      .then(response => {
-        saveButton.classList.remove("disabled");
-        if (!response.ok) {
-          showErrorMessage(translate('failed_save_category'));
-        }
-        return response.json();
-      })
-      .then(responseData => {
-        if (responseData.success) {
-          showSuccessMessage(responseData.message);
-        } else {
-          showErrorMessage(responseData.errorMessage || translate('failed_save_category'));
-        }
-      })
-      .catch(error => {
+  const categoryName = inputElement.value;
+
+  fetch('endpoints/categories/category.php', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'X-CSRF-Token': window.csrfToken,
+    },
+    body: new URLSearchParams({
+      action: 'edit',
+      categoryId: categoryId,
+      name: categoryName,
+    }),
+  })
+    .then(response => {
+      saveButton.classList.remove("disabled");
+      saveButton.disabled = false;
+
+      if (!response.ok) {
         showErrorMessage(translate('failed_save_category'));
-      });
-  }
-}
-
-function addCurrencyButton(currencyId) {
-  document.getElementById("addCurrency").disabled = true;
-  const url = 'endpoints/currency/currency.php?action=add';
-  fetch(url)
-  .then(response => {
-    if (!response.ok) {
-      throw new Error(translate('network_response_error'));
-      showErrorMessage(response.text());
-    }
-    return response.text();
-  })
-  .then(responseText => {
-    if(responseText !== "Error") {
-      const newCurrencyId = responseText;
-      let container = document.getElementById("currencies");
-      let div = document.createElement("div");
-      div.className = "form-group-inline";
-      div.dataset.currencyid = newCurrencyId;
-
-      let inputSymbol = document.createElement("input");
-      inputSymbol.type = "text";
-      inputSymbol.placeholder = "$";
-      inputSymbol.name = "symbol";
-      inputSymbol.value = "$";
-      inputSymbol.classList.add("short");
-
-      let inputName = document.createElement("input");
-      inputName.type = "text";
-      inputName.placeholder = translate('currency');
-      inputName.name = "currency";
-      inputName.value = translate('currency');
-
-      let inputCode = document.createElement("input");
-      inputCode.type = "text";
-      inputCode.placeholder = translate('currency_code');
-      inputCode.name = "code";
-      inputCode.value = "CODE";
-
-      let editLink = document.createElement("button");
-      editLink.className = "image-button medium"
-      editLink.name = "save";
-      editLink.onclick = function() {
-        editCurrency(newCurrencyId);
-      };
-
-      let editImage = document.createElement("img");
-      editImage.src = "images/siteicons/" + colorTheme + "/save.png";
-      editImage.title = translate('save_currency');
-
-      editLink.appendChild(editImage);
-
-      let deleteLink = document.createElement("button");
-      deleteLink.className = "image-button medium"
-      deleteLink.name = "delete";
-      deleteLink.onclick = function() {
-        removeCurrency(newCurrencyId);
-      };
-
-      let deleteImage = document.createElement("img");
-      deleteImage.src = "images/siteicons/" + colorTheme + "/delete.png";
-      deleteImage.title = translate('delete_currency');
-
-      deleteLink.appendChild(deleteImage);
-
-      div.appendChild(inputSymbol);
-      div.appendChild(inputName);
-      div.appendChild(inputCode);
-      div.appendChild(editLink);
-      div.appendChild(deleteLink);
-
-      container.appendChild(div);
-    } else {
-      // TODO: Show error
-    }
-    document.getElementById("addCurrency").disabled = false;
-  })
-  .catch(error => {
-    // TODO: Show error
-    document.getElementById("addCurrency").disabled = false;
-  });
-
-}
-
-function removeCurrency(currencyId) {
-  let url = `endpoints/currency/currency.php?action=delete&currencyId=${currencyId}`;
-  fetch(url)
-  .then(response => {
-    if (!response.ok) {
-      throw new Error(translate('network_response_error'));
-    }
-    return response.json();
-  })
-  .then(data => {
-    if (data.success) {
-      showSuccessMessage(data.message);
-      let divToRemove = document.querySelector(`[data-currencyid="${currencyId}"]`);
-      if (divToRemove) {
-        divToRemove.parentNode.removeChild(divToRemove);
+        throw new Error(translate('network_response_error'));
       }
-    } else {
-      showErrorMessage(data.message || translate('failed_remove_currency'));
-    }
-  })
-  .catch(error => {
-    showErrorMessage(error.message || translate('failed_remove_currency'));
-  });
-}
-
-function editCurrency(currencyId) {
-  var saveButton = document.querySelector(`div[data-currencyid="${currencyId}"] button[name="save"]`);
-  var inputSymbolElement = document.querySelector(`div[data-currencyid="${currencyId}"] input[name="symbol"]`);
-  var inputNameElement = document.querySelector(`div[data-currencyid="${currencyId}"] input[name="currency"]`);
-  var inputCodeElement = document.querySelector(`div[data-currencyid="${currencyId}"] input[name="code"]`);
-  saveButton.classList.add("disabled");
-  saveButton.disabled = true;
-  if (inputNameElement) {
-    var currencyName = encodeURIComponent(inputNameElement.value);
-    var currencySymbol = encodeURIComponent(inputSymbolElement.value);
-    var currencyCode = encodeURIComponent(inputCodeElement.value);
-    var url = `endpoints/currency/currency.php?action=edit&currencyId=${currencyId}&name=${currencyName}&symbol=${currencySymbol}&code=${currencyCode}`;
-
-    fetch(url)
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(translate('network_response_error'));
-        }
-        return response.json();
-      })
-      .then(data => {
-        if (data.success) {
-          saveButton.classList.remove("disabled");
-          saveButton.disabled = false;
-          showSuccessMessage(decodeURI(data.message));
-        } else {
-          saveButton.classList.remove("disabled");
-          saveButton.disabled = false;
-          showErrorMessage(data.message || translate('failed_save_currency'));
-        }
-      })
-      .catch(error => {
-        saveButton.classList.remove("disabled");
-        saveButton.disabled = false;
-        showErrorMessage(error.message || translate('failed_save_currency'));
-      });
-  }
-}
-
-function togglePayment(paymentId) {
-    const element = document.querySelector(`div[data-paymentid="${paymentId}"]`);
-
-    if (element.dataset.inUse === 'yes') {
-      return showErrorMessage(translate('cant_disable_payment_in_use'));
-    }
-
-    const newEnabledState = element.dataset.enabled === '1' ? '0' : '1';
-    const paymentMethodName = element.querySelector('.payment-name').innerText;
-
-    const url = `endpoints/payments/payment.php?action=toggle&paymentId=${paymentId}&enabled=${newEnabledState}`;
-
-    fetch(url).then(response => {
-        if (!response.ok) {
-          throw new Error(translate('network_response_error'));
-        }
-        return response.json();
-    }).then(data => {
-        if (data.success) {
-            element.dataset.enabled = newEnabledState;
-            showSuccessMessage(`${paymentMethodName} ${data.message}`);
-        } else {
-            showErrorMessage(data.message || translate('failed_save_payment_method'));
-        }
-    }).catch(error => {
-        showErrorMessage(error.message || translate('failed_save_payment_method'));
+      return response.json();
+    })
+    .then(responseData => {
+      if (responseData.success) {
+        showSuccessMessage(responseData.message);
+      } else {
+        showErrorMessage(responseData.message || translate('failed_save_category'));
+      }
+    })
+    .catch(error => {
+      console.error(error);
+      showErrorMessage(translate('failed_save_category'));
+      saveButton.classList.remove("disabled");
+      saveButton.disabled = false;
     });
 }
 
-document.body.addEventListener('click', function(e) {
+
+function addCurrencyButton(currencyId) {
+  const addButton = document.getElementById("addCurrency");
+  addButton.disabled = true;
+
+  fetch('endpoints/currency/currency.php', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'X-CSRF-Token': window.csrfToken,
+    },
+    body: new URLSearchParams({action: 'add'}),
+  })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(translate('network_response_error'));
+      }
+      return response.json();
+    })
+    .then(responseData => {
+      if (responseData.success) {
+        const newCurrencyId = responseData.currencyId;
+        const container = document.getElementById("currencies");
+
+        const div = document.createElement("div");
+        div.className = "form-group-inline";
+        div.dataset.currencyid = newCurrencyId;
+
+        const inputSymbol = document.createElement("input");
+        inputSymbol.type = "text";
+        inputSymbol.placeholder = "$";
+        inputSymbol.name = "symbol";
+        inputSymbol.value = "$";
+        inputSymbol.classList.add("short");
+
+        const inputName = document.createElement("input");
+        inputName.type = "text";
+        inputName.placeholder = translate('currency');
+        inputName.name = "currency";
+        inputName.value = translate('currency');
+
+        const inputCode = document.createElement("input");
+        inputCode.type = "text";
+        inputCode.placeholder = translate('currency_code');
+        inputCode.name = "code";
+        inputCode.value = "CODE";
+
+        const editLink = document.createElement("button");
+        editLink.className = "image-button medium";
+        editLink.name = "save";
+        editLink.onclick = function () {
+          editCurrency(newCurrencyId);
+        };
+        editLink.innerHTML = saveIconContent;
+        editLink.title = translate('save_member');
+
+        const deleteLink = document.createElement("button");
+        deleteLink.className = "image-button medium";
+        deleteLink.name = "delete";
+        deleteLink.onclick = function () {
+          removeCurrency(newCurrencyId);
+        };
+        deleteLink.innerHTML = deleteIconContent;
+        deleteLink.title = translate('delete_member');
+
+        div.appendChild(inputSymbol);
+        div.appendChild(inputName);
+        div.appendChild(inputCode);
+        div.appendChild(editLink);
+        div.appendChild(deleteLink);
+
+        container.appendChild(div);
+      } else {
+        showErrorMessage(responseData.message || translate('failed_add_currency'));
+      }
+    })
+    .catch(error => {
+      console.error(error);
+      showErrorMessage(translate('failed_add_currency'));
+    })
+    .finally(() => {
+      addButton.disabled = false;
+    });
+}
+
+function removeCurrency(currencyId) {
+  fetch('endpoints/currency/currency.php', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'X-CSRF-Token': window.csrfToken,
+    },
+    body: new URLSearchParams({
+      action: 'delete',
+      currencyId: currencyId,
+    }),
+  })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(translate('network_response_error'));
+      }
+      return response.json();
+    })
+    .then(data => {
+      if (data.success) {
+        showSuccessMessage(data.message);
+        const divToRemove = document.querySelector(`[data-currencyid="${currencyId}"]`);
+        if (divToRemove) divToRemove.remove();
+      } else {
+        showErrorMessage(data.message || translate('failed_remove_currency'));
+      }
+    })
+    .catch(error => {
+      console.error(error);
+      showErrorMessage(error.message || translate('failed_remove_currency'));
+    });
+}
+
+function editCurrency(currencyId) {
+  const saveButton = document.querySelector(`div[data-currencyid="${currencyId}"] button[name="save"]`);
+  const inputSymbolElement = document.querySelector(`div[data-currencyid="${currencyId}"] input[name="symbol"]`);
+  const inputNameElement = document.querySelector(`div[data-currencyid="${currencyId}"] input[name="currency"]`);
+  const inputCodeElement = document.querySelector(`div[data-currencyid="${currencyId}"] input[name="code"]`);
+
+  if (!inputNameElement) return;
+
+  saveButton.classList.add("disabled");
+  saveButton.disabled = true;
+
+  const currencyName = inputNameElement.value;
+  const currencySymbol = inputSymbolElement.value;
+  const currencyCode = inputCodeElement.value;
+
+  fetch('endpoints/currency/currency.php', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'X-CSRF-Token': window.csrfToken,
+    },
+    body: new URLSearchParams({
+      action: 'edit',
+      currencyId: currencyId,
+      name: currencyName,
+      symbol: currencySymbol,
+      code: currencyCode,
+    }),
+  })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(translate('network_response_error'));
+      }
+      return response.json();
+    })
+    .then(data => {
+      saveButton.classList.remove("disabled");
+      saveButton.disabled = false;
+
+      if (data.success) {
+        showSuccessMessage(data.message);
+      } else {
+        showErrorMessage(data.message || translate('failed_save_currency'));
+      }
+    })
+    .catch(error => {
+      console.error(error);
+      showErrorMessage(error.message || translate('failed_save_currency'));
+      saveButton.classList.remove("disabled");
+      saveButton.disabled = false;
+    });
+}
+
+function togglePayment(paymentId) {
+  const element = document.querySelector(`div[data-paymentid="${paymentId}"]`);
+
+  if (element.dataset.inUse === "yes") {
+    return showErrorMessage(translate("cant_disable_payment_in_use"));
+  }
+
+  const newEnabledState = element.dataset.enabled === "1" ? "0" : "1";
+  const paymentMethodName = element.querySelector(".payment-name").innerText;
+
+  fetch("endpoints/payments/toggle.php", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "X-CSRF-Token": window.csrfToken,
+    },
+    body: new URLSearchParams({
+      paymentId: paymentId,
+      enabled: newEnabledState,
+    }),
+  })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(translate("network_response_error"));
+      }
+      return response.json();
+    })
+    .then(data => {
+      if (data.success) {
+        element.dataset.enabled = newEnabledState;
+        showSuccessMessage(`${paymentMethodName} ${data.message}`);
+      } else {
+        showErrorMessage(data.message || translate("failed_save_payment_method"));
+      }
+    })
+    .catch(error => {
+      console.error(error);
+      showErrorMessage(error.message || translate("failed_save_payment_method"));
+    });
+}
+
+document.body.addEventListener('click', function (e) {
   let targetElement = e.target;
   do {
     if (targetElement.classList && targetElement.classList.contains('payments-payment')) {
       let targetChild = e.target;
       do {
-        if (targetChild.classList && (targetChild.classList.contains('payment-name') || targetChild.classList.contains('drag-icon') )) {
+        if (targetChild.classList && (targetChild.classList.contains('payment-name') || targetChild.classList.contains('drag-icon'))) {
           return;
         }
         targetChild = targetChild.parentNode;
@@ -525,7 +651,7 @@ document.body.addEventListener('click', function(e) {
   } while (targetElement);
 });
 
-document.body.addEventListener('blur', function(e) {
+document.body.addEventListener('blur', function (e) {
   let targetElement = e.target;
   if (targetElement.classList && targetElement.classList.contains('payment-name')) {
     const paymentId = targetElement.closest('.payments-payment').dataset.paymentid;
@@ -536,36 +662,47 @@ document.body.addEventListener('blur', function(e) {
 
 function renamePayment(paymentId, newName) {
   const name = newName.trim();
+  if (!name) return;
+
   const formData = new FormData();
-  formData.append('paymentId', paymentId);
-  formData.append('name', name);
-  fetch('endpoints/payments/rename.php', {
-    method: 'POST',
-    body: formData
-  }).then(response => {
-    if (!response.ok) {
-      throw new Error(translate('network_response_error'));
-    }
-    return response.json();
-  }).then(data => {
-    if (data.success) {
-      showSuccessMessage(`${newName} ${data.message}`);
-    } else {
-      showErrorMessage(data.message);
-    }
-  }).catch(error => {
-    showErrorMessage(translate('unknown_error'));
-  });
+  formData.append("paymentId", paymentId);
+  formData.append("name", name);
+
+  fetch("endpoints/payments/rename.php", {
+    method: "POST",
+    headers: {
+      "X-CSRF-Token": window.csrfToken,
+    },
+    body: formData,
+  })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(translate("network_response_error"));
+      }
+      return response.json();
+    })
+    .then(data => {
+      if (data.success) {
+        showSuccessMessage(`${newName} ${data.message}`);
+      } else {
+        showErrorMessage(data.message || translate("failed_save_payment_method"));
+      }
+    })
+    .catch(error => {
+      console.error(error);
+      showErrorMessage(translate("unknown_error"));
+    });
 }
 
-document.body.addEventListener('keypress', function(e) {
-    let targetElement = e.target;
-    if (targetElement.classList && targetElement.classList.contains('payment-name')) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            targetElement.blur();
-        }
+
+document.body.addEventListener('keypress', function (e) {
+  let targetElement = e.target;
+  if (targetElement.classList && targetElement.classList.contains('payment-name')) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      targetElement.blur();
     }
+  }
 });
 
 function handleFileSelect(event) {
@@ -576,14 +713,14 @@ function handleFileSelect(event) {
   iconUrl.value = "";
 
   if (fileInput.files && fileInput.files[0]) {
-      const reader = new FileReader();
+    const reader = new FileReader();
 
-      reader.onload = function (e) {
-          iconImg.src = e.target.result;
-          iconImg.style.display = 'block';
-      };
+    reader.onload = function (e) {
+      iconImg.src = e.target.result;
+      iconImg.style.display = 'block';
+    };
 
-      reader.readAsDataURL(fileInput.files[0]);
+    reader.readAsDataURL(fileInput.files[0]);
   }
 }
 
@@ -603,25 +740,42 @@ function setSearchButtonStatus() {
 function searchPaymentIcon() {
   const nameInput = document.querySelector("#paymentname");
   const searchTerm = nameInput.value.trim();
-  if (searchTerm !== "") {
-    const iconSearchPopup = document.querySelector("#icon-search-results");
-    iconSearchPopup.classList.add("is-open");
-    const imageSearchUrl = `endpoints/payments/search.php?search=${searchTerm}`;
-    fetch(imageSearchUrl)
-            .then(response => response.json())
-            .then(data => {
-                if (data.imageUrls) {
-                    displayImageResults(data.imageUrls);
-                } else if (data.error) {
-                    console.error(data.error);
-                }
-            })
-            .catch(error => {
-                console.error(translate('error_fetching_image_results'), error);
-            });
-  } else {
+  if (searchTerm === "") {
     nameInput.focus();
+    return;
   }
+
+  const iconSearchPopup = document.querySelector("#icon-search-results");
+  const iconResults = document.querySelector("#icon-search-images");
+  const iconSearchBackdrop = document.querySelector("#icon-search-backdrop");
+  iconSearchPopup.classList.add("is-open");
+  if (iconSearchBackdrop) {
+    iconSearchBackdrop.classList.add("is-open");
+  }
+  const iconSearchTitle = document.querySelector("#icon-search-title");
+  if (iconSearchTitle) {
+    const baseTitle = iconSearchTitle.dataset.title;
+    iconSearchTitle.textContent = `${baseTitle}: ${searchTerm}`;
+  }
+  showSearchState(iconResults, 'loading');
+
+  const imageSearchUrl = `endpoints/payments/search.php?search=${searchTerm}`;
+  fetch(imageSearchUrl)
+    .then(response => response.json())
+    .then(data => {
+      if (data.imageUrls && data.imageUrls.length > 0) {
+        displayImageResults(data.imageUrls);
+      } else if (data.error) {
+        console.error(data.error);
+        showSearchState(iconResults, 'error');
+      } else {
+        showSearchState(iconResults, 'empty');
+      }
+    })
+    .catch(error => {
+      console.error(translate('error_fetching_image_results'), error);
+      showSearchState(iconResults, 'error');
+    });
 }
 
 function displayImageResults(imageSources) {
@@ -629,15 +783,15 @@ function displayImageResults(imageSources) {
   iconResults.innerHTML = "";
 
   imageSources.forEach(src => {
-      const img = document.createElement("img");
-      img.src = src;
-      img.onclick = function() {
-        selectWebIcon(src);
-      };
-      img.onerror = function() {
-        this.parentNode.removeChild(this);
-      };
-      iconResults.appendChild(img);
+    const img = document.createElement("img");
+    img.src = src;
+    img.onclick = function () {
+      selectWebIcon(src);
+    };
+    img.onerror = function () {
+      this.parentNode.removeChild(this);
+    };
+    iconResults.appendChild(img);
   });
 }
 
@@ -653,6 +807,14 @@ function selectWebIcon(url) {
 function closeIconSearch() {
   const iconSearchPopup = document.querySelector("#icon-search-results");
   iconSearchPopup.classList.remove("is-open");
+  const iconSearchBackdrop = document.querySelector("#icon-search-backdrop");
+  if (iconSearchBackdrop) {
+    iconSearchBackdrop.classList.remove("is-open");
+  }
+  const iconSearchTitle = document.querySelector("#icon-search-title");
+  if (iconSearchTitle) {
+    iconSearchTitle.textContent = iconSearchTitle.dataset.title;
+  }
   const iconResults = document.querySelector("#icon-search-images");
   iconResults.innerHTML = "";
 }
@@ -668,10 +830,10 @@ function reloadPaymentMethods() {
   const paymentMethodsEndpoint = "endpoints/payments/get.php";
 
   fetch(paymentMethodsEndpoint)
-  .then(response => response.text())
-  .then(data => {
-    paymentsContainer.innerHTML = data;
-  });
+    .then(response => response.text())
+    .then(data => {
+      paymentsContainer.innerHTML = data;
+    });
 }
 
 function addPaymentMethod() {
@@ -682,38 +844,45 @@ function addPaymentMethod() {
 
   submitButton.disabled = true;
   const formData = new FormData(paymentMethodForm);
+  formData.append("action", "add");
 
   fetch(addPaymentMethodEndpoint, {
     method: "POST",
-    body: formData
+    headers: {
+      "X-CSRF-Token": window.csrfToken,
+    },
+    body: formData,
   })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      showSuccessMessage(data.message);
-      paymentMethodForm.reset();
-      resetFormIcon();
-      reloadPaymentMethods();
-    } else {
-      showErrorMessage(data.errorMessage);
-    }
-    submitButton.disabled = false;
-  })
-  .catch(error => {
-    showErrorMessage(translate('unknown_error'));
-    submitButton.disabled = false;
-  });
-
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        showSuccessMessage(data.message);
+        paymentMethodForm.reset();
+        resetFormIcon();
+        reloadPaymentMethods();
+      } else {
+        showErrorMessage(data.message || translate("failed_add_payment_method"));
+      }
+    })
+    .catch(error => {
+      console.error(error);
+      showErrorMessage(translate("unknown_error"));
+    })
+    .finally(() => {
+      submitButton.disabled = false;
+    });
 }
 
+
 function deletePaymentMethod(paymentId) {
-    fetch(`endpoints/payments/delete.php?id=${paymentId}`, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ id: paymentId }),
-    })
+  fetch(`endpoints/payments/delete.php?id=${paymentId}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+       "X-CSRF-Token": window.csrfToken,
+    },
+    body: JSON.stringify({ id: paymentId }),
+  })
     .then(response => response.json())
     .then(data => {
       if (data.success) {
@@ -723,7 +892,7 @@ function deletePaymentMethod(paymentId) {
           paymentToRemove.remove();
         }
       } else {
-        showErrorMessage(data.errorMessage);
+        showErrorMessage(data.message);
       }
     })
     .catch((error) => {
@@ -732,30 +901,36 @@ function deletePaymentMethod(paymentId) {
 }
 
 function savePaymentMethodsSorting() {
-  const paymentMethods = document.getElementById('payments-list');
-  const paymentMethodIds = Array.from(paymentMethods.children).map(paymentMethod => paymentMethod.dataset.paymentid);
+  const paymentMethods = document.getElementById("payments-list");
+  const paymentMethodIds = Array.from(paymentMethods.children).map(
+    paymentMethod => paymentMethod.dataset.paymentid
+  );
 
   const formData = new FormData();
-  paymentMethodIds.forEach(paymentMethodId => {
-      formData.append('paymentMethodIds[]', paymentMethodId);
-  });
+  paymentMethodIds.forEach(id => formData.append("paymentMethodIds[]", id));
+  formData.append("action", "sort");
 
-  fetch('endpoints/payments/sort.php', {
-    method: 'POST',
-    body: formData
+  fetch("endpoints/payments/sort.php", {
+    method: "POST",
+    headers: {
+      "X-CSRF-Token": window.csrfToken,
+    },
+    body: formData,
   })
-  .then(response => response.json())
-  .then(data => {
+    .then(response => response.json())
+    .then(data => {
       if (data.success) {
-          showSuccessMessage(data.message);
+        showSuccessMessage(data.message);
       } else {
-          showErrorMessage(data.errorMessage);
+        showErrorMessage(data.message || translate("failed_sort_payment_methods"));
       }
-  })
-  .catch(error => {
-      showErrorMessage(translate('unknown_error'));
-  });
+    })
+    .catch(error => {
+      console.error(error);
+      showErrorMessage(translate("unknown_error"));
+    });
 }
+
 
 var el = document.getElementById('payments-list');
 var sortable = Sortable.create(el, {
@@ -770,126 +945,92 @@ var sortable = Sortable.create(el, {
 });
 
 
-document.addEventListener('DOMContentLoaded', function() {
-    
-    document.getElementById("userForm").addEventListener("submit", function(event) {
-        event.preventDefault();
-        document.getElementById("userSubmit").disabled = true;
-        const formData = new FormData(event.target);
-        fetch("endpoints/user/save_user.php", {
-          method: "POST",
-          body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-          if (data.success) {
-            document.getElementById("avatar").src = document.getElementById("avatarImg").src;
-            var newUsername = document.getElementById("username").value;
-            document.getElementById("user").textContent = newUsername;
-            showSuccessMessage(data.message);
-            if (data.reload) {
-              location.reload();
-            }
-          } else {
-            showErrorMessage(data.errorMessage);
-          }
-          document.getElementById("userSubmit").disabled = false;
-        })
-        .catch(error => {
-          showErrorMessage(translate('unknown_error'));
-        });
-      });
+document.addEventListener('DOMContentLoaded', function () {
 
-      var removePaymentButtons = document.querySelectorAll(".delete-payment-method");
-      removePaymentButtons.forEach(function(button) {
-        button.addEventListener('click', function(event) {
-          event.preventDefault();
-          event.stopPropagation();
-          let paymentId = event.target.getAttribute('data-paymentid');
-          deletePaymentMethod(paymentId);
-        });
-      });
+  var removePaymentButtons = document.querySelectorAll(".delete-payment-method");
+  removePaymentButtons.forEach(function (button) {
+    button.addEventListener('click', function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      let paymentId = event.target.getAttribute('data-paymentid');
+      deletePaymentMethod(paymentId);
+    });
+  });
+
+  loadGoogleSearchUsage();
+  loadFixerUsage();
+
+  if (document.getElementById("ai_type")) {
+    toggleAiInputs();
+  }
 
 });
 
 function addFixerKeyButton() {
-  document.getElementById("addFixerKey").disabled = true;
+  const addButton = document.getElementById("addFixerKey");
+  addButton.disabled = true;
+
   const apiKeyInput = document.querySelector("#fixerKey");
-  apiKey = apiKeyInput.value.trim();
+  const apiKey = apiKeyInput.value.trim();
   const provider = document.querySelector("#fixerProvider").value;
+  const convertCurrencyCheckbox = document.querySelector("#convertcurrency");
+
   fetch("endpoints/currency/fixer_api_key.php", {
     method: "POST",
     headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
+      "Content-Type": "application/x-www-form-urlencoded",
+      'X-CSRF-Token': window.csrfToken,
     },
-    body: `api_key=${encodeURIComponent(apiKey)}&provider=${encodeURIComponent(provider)}`,
+    body: new URLSearchParams({
+      api_key: apiKey,
+      provider: provider,
+    }),
   })
-  .then(response => response.json())
-  .then(data => {
+    .then(response => response.json())
+    .then(data => {
       if (data.success) {
-          showSuccessMessage(data.message);
-          document.getElementById("addFixerKey").disabled = false;
-          // update currency exchange rates
-          fetch("endpoints/currency/update_exchange.php?force=true");
+        showSuccessMessage(data.message);
+        addButton.disabled = false;
+        convertCurrencyCheckbox.disabled = false;
+
+        fetch("endpoints/currency/update_exchange.php", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            'X-CSRF-Token': window.csrfToken,
+          },
+          body: new URLSearchParams({force: "true"}),
+        }).catch(console.error).finally(() => loadFixerUsage());
       } else {
-          showErrorMessage(data.message);
-          document.getElementById("addFixerKey").disabled = false;
+        showErrorMessage(data.message);
+        addButton.disabled = false;
       }
-  })
-  .catch(error => {
-    showErrorMessage(error);
-    document.getElementById("addFixerKey").disabled = false;
-  });
+    })
+    .catch(error => {
+      console.error(error);
+      showErrorMessage(translate("unknown_error"));
+      addButton.disabled = false;
+    });
 }
 
-function switchTheme() {
-  const darkThemeCss = document.querySelector("#dark-theme");
-  darkThemeCss.disabled = !darkThemeCss.disabled;
-
-  const themeChoice = darkThemeCss.disabled ? 'light' : 'dark';
-  document.cookie = `theme=${themeChoice}; expires=Fri, 31 Dec 9999 23:59:59 GMT`;
-
-  document.body.className = themeChoice;
-
-  const button = document.getElementById("switchTheme");
-  button.disabled = true;
-
-  fetch('endpoints/settings/theme.php', {
-    method: 'POST',
-    headers: {
-        'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({theme: themeChoice === 'dark'})
-  })
-  .then(response => response.json())
-  .then(data => {
-      if (data.success) {
-          showSuccessMessage(data.message);
-      } else {
-          showErrorMessage(data.errorMessage);
-      }
-      button.disabled = false;
-  }).catch(error => {
-      button.disabled = false;
-  });
-}
 
 function storeSettingsOnDB(endpoint, value) {
   fetch('endpoints/settings/' + endpoint + '.php', {
     method: 'POST',
     headers: {
-        'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': window.csrfToken,
     },
-    body: JSON.stringify({"value": value})
+    body: JSON.stringify({ "value": value })
   })
-  .then(response => response.json())
-  .then(data => {
+    .then(response => response.json())
+    .then(data => {
       if (data.success) {
-          showSuccessMessage(data.message);
+        showSuccessMessage(data.message);
       } else {
-          showErrorMessage(data.errorMessage);
+        showErrorMessage(data.message);
       }
-  });
+    });
 }
 
 function setShowMonthlyPrice() {
@@ -920,91 +1061,149 @@ function setHideDisabled() {
   storeSettingsOnDB('hide_disabled', value);
 }
 
-function backupDB() {
-  const button = document.getElementById("backupDB");
-  button.disabled = true;
+function setDisabledToBottom() {
+  const disabledToBottomCheckbox = document.querySelector("#disabledtobottom");
+  const value = disabledToBottomCheckbox.checked;
 
-  fetch('endpoints/db/backup.php')
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
-        const link = document.createElement('a');
-        const filename = data.file;
-        link.href = '.tmp/' + filename;
-        link.download = 'backup.zip';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        button.disabled = false;
-      } else {
-        showErrorMessage(data.errorMessage);
-        button.disabled = false;
-      }
-    })
-    .catch(error => {
-      showErrorMessage(error);
-      button.disabled = false;
-    });
+  storeSettingsOnDB('disabled_to_bottom', value);
 }
 
-function openRestoreDBFileSelect() {
-  document.getElementById('restoreDBFile').click();
-};
+function setShowOriginalPrice() {
+  const showOriginalPriceCheckbox = document.querySelector("#showoriginalprice");
+  const value = showOriginalPriceCheckbox.checked;
 
-function restoreDB() {
-  const input = document.getElementById('restoreDBFile');
-  const file = input.files[0];
+  storeSettingsOnDB('show_original_price', value);
+}
 
-  if (!file) {
-    console.error('No file selected');
+function setUpcomingPaymentsLimit() {
+  const upcomingPaymentsLimit = document.querySelector("#upcomingpaymentslimit");
+  const value = Number(upcomingPaymentsLimit.value);
+
+  storeSettingsOnDB('upcoming_payments_limit', value);
+}
+
+function setMobileNavigation() {
+  const mobileNavigationCheckbox = document.querySelector("#mobilenavigation");
+  const value = mobileNavigationCheckbox.checked;
+
+  storeSettingsOnDB('mobile_navigation', value);
+}
+
+function setShowSubscriptionProgress() {
+  const showSubscriptionProgressCheckbox = document.querySelector("#showsubscriptionprogress");
+  const value = showSubscriptionProgressCheckbox.checked;
+
+  storeSettingsOnDB('subscription_progress', value);
+}
+
+function loadApiUsage(endpoint, containerId, countId, fillId) {
+  const usageContainer = document.getElementById(containerId);
+  if (!usageContainer) {
     return;
   }
 
-  const formData = new FormData();
-  formData.append('file', file);
-
-  fetch('endpoints/db/restore.php', {
-    method: 'POST',
-    body: formData
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      showSuccessMessage(data.message)
-      window.location.href = 'logout.php';
-    } else {
-      showErrorMessage(data.message);
+  fetch(endpoint, {
+    headers: {
+      'X-CSRF-Token': window.csrfToken,
     }
   })
-  .catch(error => showErrorMessage('Error:', error));
+    .then(response => response.json())
+    .then(data => {
+      if (!data.success || !data.total) {
+        usageContainer.style.display = "none";
+        return;
+      }
+
+      const percent = Math.min(100, Math.round((data.used / data.total) * 100));
+      document.getElementById(countId).textContent = `${data.used} / ${data.total}`;
+
+      const fill = document.getElementById(fillId);
+      fill.style.width = percent + "%";
+      fill.classList.toggle("warn", percent >= 80 && percent < 95);
+      fill.classList.toggle("danger", percent >= 95);
+
+      usageContainer.style.display = "";
+    })
+    .catch(() => {
+      usageContainer.style.display = "none";
+    });
+}
+
+function loadFixerUsage() {
+  loadApiUsage("endpoints/settings/fixer_usage.php", "fixerUsage", "fixerUsageCount", "fixerUsageFill");
+}
+
+function loadGoogleSearchUsage() {
+  loadApiUsage("endpoints/settings/google_search_usage.php", "googleSearchUsage", "googleSearchUsageCount", "googleSearchUsageFill");
+}
+
+function saveGoogleSearchButton() {
+  const saveButton = document.getElementById("saveGoogleSearch");
+  saveButton.disabled = true;
+
+  const apiKey = document.querySelector("#googleSearchKey").value.trim();
+
+  fetch("endpoints/settings/google_search.php", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      'X-CSRF-Token': window.csrfToken,
+    },
+    body: new URLSearchParams({
+      api_key: apiKey,
+    }),
+  })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        showSuccessMessage(data.message);
+        loadGoogleSearchUsage();
+      } else {
+        showErrorMessage(data.message);
+      }
+    })
+    .catch(() => {
+      showErrorMessage(translate('unknown_error'));
+    })
+    .finally(() => {
+      saveButton.disabled = false;
+    });
+}
+
+function setWeekStartsSunday() {
+  const weekStartsSundayCheckbox = document.querySelector("#weekstartssunday");
+  const value = weekStartsSundayCheckbox.checked;
+
+  storeSettingsOnDB('week_starts_sunday', value);
 }
 
 function saveCategorySorting() {
-  const categories = document.getElementById('categories');
-  const categoryIds = Array.from(categories.children).map(category => category.dataset.categoryid);
-  
+  const categories = document.getElementById("categories");
+  const categoryIds = Array.from(categories.children).map(c => c.dataset.categoryid);
+
   const formData = new FormData();
-  categoryIds.forEach(categoryId => {
-      formData.append('categoryIds[]', categoryId);
-  });
-  
-  fetch('endpoints/categories/sort.php', {
-    method: 'POST',
-    body: formData
+  categoryIds.forEach(categoryId => formData.append("categoryIds[]", categoryId));
+  formData.append("action", "sort");
+
+  fetch("endpoints/categories/category.php", {
+    method: "POST",
+    headers: {"X-CSRF-Token": window.csrfToken},
+    body: formData,
   })
-  .then(response => response.json())
-  .then(data => {
+    .then(response => response.json())
+    .then(data => {
       if (data.success) {
-          showSuccessMessage(data.message);
+        showSuccessMessage(data.message);
       } else {
-          showErrorMessage(data.errorMessage);
+        showErrorMessage(data.message);
       }
-  })
-  .catch(error => {
-      showErrorMessage(translate('unknown_error'));
-  });
+    })
+    .catch(error => {
+      console.error(error);
+      showErrorMessage(translate("unknown_error"));
+    });
 }
+
 
 var el = document.getElementById('categories');
 var sortable = Sortable.create(el, {
@@ -1018,126 +1217,189 @@ var sortable = Sortable.create(el, {
   },
 });
 
+function fetch_ai_models() {
+  const endpoint = 'endpoints/ai/fetch_models.php';
+  const type = document.querySelector("#ai_type").value;
+  const api_key = document.querySelector("#ai_api_key").value.trim();
+  const ollama_host = document.querySelector("#ai_ollama_host").value.trim();
+  const modelSelect = document.querySelector("#ai_model");
 
-function setTheme(themeColor) {
-  var currentTheme = 'blue';
-  var themeIds = ['red-theme', 'green-theme', 'yellow-theme'];
-
-  themeIds.forEach(function(id) {
-    var themeStylesheet = document.getElementById(id);
-    if (themeStylesheet && !themeStylesheet.disabled) {
-        currentTheme = id.replace('-theme', '');
-        themeStylesheet.disabled = true;
-    }
-  });
-
-  if (themeColor !== "blue") {
-    var enableTheme = document.getElementById(themeColor + '-theme');
-    enableTheme.disabled = false;
-  }
-
-  var images = document.querySelectorAll('img');
-  images.forEach(function(img) {
-    if (img.src.includes('siteicons/' + currentTheme)) {
-        img.src = img.src.replace(currentTheme, themeColor);
-    }
-  });
-
-  var labels = document.querySelectorAll('.theme-preview');
-  labels.forEach(function(label) {
-    label.classList.remove('is-selected');
-  });
-
-  var targetLabel = document.querySelector(`.theme-preview.${themeColor}`);
-  if (targetLabel) {
-    targetLabel.classList.add('is-selected');
-  }
-
-  document.cookie = `colorTheme=${themeColor}; expires=Fri, 31 Dec 9999 23:59:59 GMT`;
-
-  fetch('endpoints/settings/colortheme.php', {
+  fetch(endpoint, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': window.csrfToken,
     },
-    body: JSON.stringify({ color: themeColor })
+    body: JSON.stringify({ type, api_key, ollama_host })
   })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      showSuccessMessage(data.message);
-    } else {
-      showErrorMessage(data.message);
-    }
-  })
-  .catch(error => {
-    showErrorMessage(translate('unknown_error'));
-  });
-
-}
-
-function resetCustomColors() {
-  const button = document.getElementById("reset-colors");
-  button.disabled = true;
-
-  fetch('endpoints/settings/resettheme.php', {
-      method: 'DELETE',
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      showSuccessMessage(data.message);
-      const custom_theme_colors = document.getElementById('custom_theme_colors');
-      if (custom_theme_colors) {
-        custom_theme_colors.remove();
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        modelSelect.innerHTML = '';
+        data.models.forEach(model => {
+          const option = document.createElement('option');
+          option.value = model.id;
+          option.textContent = model.name;
+          modelSelect.appendChild(option);
+        });
+      } else {
+        showErrorMessage(data.message);
       }
-      document.documentElement.style.removeProperty('--main-color');
-      document.documentElement.style.removeProperty('--accent-color');
-      document.documentElement.style.removeProperty('--hover-color');
-      document.getElementById("mainColor").value = "#FFFFFF";
-      document.getElementById("accentColor").value = "#FFFFFF";
-      document.getElementById("hoverColor").value = "#FFFFFF";
-    } else {
-      showErrorMessage(data.message);
-    }
-    button.disabled = false;
-  })
-  .catch(error => {
-    showErrorMessage(translate('unknown_error'));
-    button.disabled = false;
-  });
+    })
+    .catch(error => {
+      showErrorMessage(translate('unknown_error'));
+    });
 }
 
-function saveCustomColors() {
-  const button = document.getElementById("save-colors");
-  button.disabled = true;
+function toggleAiInputs() {
+  const type = document.getElementById("ai_type").value;
+  const apiKeyInput = document.getElementById("ai_api_key");
+  const apiKeyToggleIcon = apiKeyInput.closest(".password-field")?.querySelector(".password-toggle i");
+  const urlGroup = document.getElementById("ai_url_group");
+  const urlInput = document.getElementById("ai_ollama_host");
+  const testButtonUrl = document.getElementById("fetchModelsButton2");
+  const testButtonKey = document.getElementById("fetchModelsButton");
 
-  const mainColor = document.getElementById("mainColor").value;
-  const accentColor = document.getElementById("accentColor").value;
-  const hoverColor = document.getElementById("hoverColor").value;
+  // Reset key visibility
+  apiKeyInput.type = "password";
+  apiKeyToggleIcon?.classList.replace("fa-eye-slash", "fa-eye");
 
-  fetch('endpoints/settings/customtheme.php', {
+  if (type === "ollama") {
+    apiKeyInput.classList.add("hidden");
+    testButtonKey.classList.add("hidden");      // hide key-row Test
+    urlGroup.style.display = "";
+    urlInput.placeholder = "http://localhost:11434";
+    testButtonUrl.classList.remove("hidden");   // show url-row Test
+  } else if (type === "openai-compatible") {
+    apiKeyInput.classList.remove("hidden");
+    testButtonKey.classList.remove("hidden");   // show key-row Test
+    urlGroup.style.display = "";
+    urlInput.placeholder = "http://localhost:11434/v1";
+    testButtonUrl.classList.add("hidden");      // hide url-row Test
+  } else {
+    apiKeyInput.classList.remove("hidden");
+    testButtonKey.classList.remove("hidden");   // show key-row Test
+    urlGroup.style.display = "none";
+    testButtonUrl.classList.add("hidden");      // hidden anyway (group hidden)
+  }
+}
+
+function saveAiSettingsButton() {
+  const aiEnabled = document.querySelector("#ai_enabled").checked;
+  const aiType = document.querySelector("#ai_type").value;
+  const aiApiKey = document.querySelector("#ai_api_key").value.trim();
+  const aiOllamaHost = document.querySelector("#ai_ollama_host").value.trim();
+  const aiModel = document.querySelector("#ai_model").value;
+  const aiRunSchedule = document.querySelector("#ai_run_schedule").value;
+
+  fetch('endpoints/ai/save_settings.php', {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': window.csrfToken,
     },
-    body: JSON.stringify({ mainColor: mainColor, accentColor: accentColor, hoverColor: hoverColor })
+    body: JSON.stringify({ ai_enabled: aiEnabled, ai_type: aiType, api_key: aiApiKey, ollama_host: aiOllamaHost, model: aiModel, ai_run_schedule: aiRunSchedule })
   })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      showSuccessMessage(data.message);
-      document.documentElement.style.setProperty('--main-color', mainColor);
-      document.documentElement.style.setProperty('--accent-color', accentColor);
-      document.documentElement.style.setProperty('--hover-color', hoverColor);
-    } else {
-      showErrorMessage(data.message);
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        showSuccessMessage(data.message);
+        const runAiActionButton = document.querySelector("#runAiRecommendations");
+        if (data.enabled) {
+          runAiActionButton.classList.remove("hidden");
+        } else {
+          runAiActionButton.classList.add("hidden");
+        }
+      } else {
+        showErrorMessage(data.message);
+      }
+    })
+    .catch(error => {
+      showErrorMessage(translate('unknown_error'));
+    });
+}
+
+function translateCategories() {
+  const button = document.getElementById("translateCategories");
+  const originalContent = button.innerHTML;
+
+  button.disabled = true;
+  button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+  fetch('endpoints/ai/translate_categories.php', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': window.csrfToken,
     }
-    button.disabled = false;
   })
-  .catch(error => {
-    showErrorMessage(translate('unknown_error'));
-    button.disabled = false;
-  });
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        Object.entries(data.translations).forEach(([categoryId, categoryName]) => {
+          const input = document.querySelector(`#categories div[data-categoryid="${categoryId}"] input[name="category"]`);
+          if (input) {
+            input.value = categoryName;
+          }
+        });
+        showSuccessMessage(data.message);
+      } else {
+        showErrorMessage(data.message);
+      }
+    })
+    .catch(error => {
+      showErrorMessage(translate('unknown_error'));
+    })
+    .finally(() => {
+      button.disabled = false;
+      button.innerHTML = originalContent;
+    });
+}
+
+function runAiRecommendations() {
+  const endpoint = 'endpoints/ai/generate_recommendations.php';
+  const button = document.querySelector("#runAiRecommendations");
+  const spinner = document.querySelector("#aiSpinner");
+
+  button.classList.add("hidden");
+  spinner.classList.remove("hidden");
+
+  fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': window.csrfToken,
+    }
+  })
+    .then(async response => {
+      const responseText = await response.text();
+      let data;
+
+      try {
+        data = JSON.parse(responseText);
+      } catch (error) {
+        throw new Error(`${translate('network_response_error')} (HTTP ${response.status})`);
+      }
+
+      if (!response.ok && !data.message) {
+        throw new Error(`${translate('network_response_error')} (HTTP ${response.status})`);
+      }
+
+      return data;
+    })
+    .then(data => {
+      if (data.success) {
+        showSuccessMessage(data.message);
+      } else {
+        showErrorMessage(data.message);
+      }
+    })
+    .catch(error => {
+      showErrorMessage(error.message || translate('unknown_error'));
+    })
+    .finally(() => {
+      button.classList.remove("hidden");
+      spinner.classList.add("hidden");
+    });
 
 }

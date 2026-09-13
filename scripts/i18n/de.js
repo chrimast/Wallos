@@ -13,6 +13,8 @@ let i18n = {
   failed_add_member: "Hinzufügen von Mitglied fehlgeschlagen",
   member: "Mitglied",
   email: "E-Mail",
+  firstname: "Vorname",
+  lastname: "Nachname",
   save_member: "Mitglied speichern",
   delete_member: "Mitglied löschen",
   failed_remove_member: "Mitglied konnte nicht gelöscht werden",
@@ -35,4 +37,19 @@ let i18n = {
   error_saving_notification_data:
     "Fehler beim Speichern der Benachrichtigungsangaben",
   error_sending_notification: "Fehler beim Senden der Benachrichtigung",
+  delete_account_confirmation: "Möchten Sie Ihr Konto wirklich löschen?",
+  this_will_delete_all_data: "Dadurch werden alle Daten gelöscht und können nicht wiederhergestellt werden. Fortfahren?",
+  success: "Erfolg",
+  copied_to_clipboard: "In die Zwischenablage kopiert",
+  // Calendar
+  price: "Preis",
+  category: "Kategorie",
+  paid_by: "Bezahlt von",
+  payment_method: "Zahlungsmethode",
+  notes: "Notizen",
+  export: "Exportieren",
+  invalid_budget: "Das Budget muss eine nicht negative Zahl sein",
+  invalid_budget_period: "Ungültiger Budgetzeitraum ausgewählt",
+  invalid_budget_anchor_date: "Das Ankerdatum muss ein gültiges Datum sein",
+  no_results_found: "Keine Ergebnisse gefunden",
 }

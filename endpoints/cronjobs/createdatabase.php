@@ -1,8 +1,6 @@
-<?php 
+<?php
 
-require_once 'conf.php';
-
-$databaseFile = $webPath . 'db/wallos.db';
+$databaseFile = __DIR__ . '/../../db/wallos.db';
 
 if (!file_exists($databaseFile)) {
     echo "Database does not exist. Creating it...\n";
@@ -128,7 +126,8 @@ if (!file_exists($databaseFile)) {
     (1, 1, 'Daily'),
     (2, 7, 'Weekly'),
     (3, 30, 'Monthly'),
-    (4, 365, 'Yearly')");
+    (4, 365, 'Yearly'),
+    (5, 0, 'One-time')");
 
     $db->exec("INSERT INTO frequencies (id, name) VALUES
     (1, 1),
@@ -195,7 +194,9 @@ if (!file_exists($databaseFile)) {
     ('Philippine Peso', '₱', 'PHP', 1),
     ('Singapore Dollar', 'S$', 'SGD', 1),
     ('Thai Baht', '฿', 'THB', 1),
-    ('South African Rand', 'R', 'ZAR', 1)");
+    ('South African Rand', 'R', 'ZAR', 1),
+    ('Ukrainian Hryvnia', '₴', 'UAH', 1),
+    ('New Taiwan Dollar', 'NT$', 'TWD', 1)");
 
     $db->exec("INSERT INTO payment_methods (id, name, icon) VALUES
     (1, 'PayPal', 'paypal.png'),
@@ -230,11 +231,13 @@ if (!file_exists($databaseFile)) {
     (30, 'VeriFone', 'verifone.png'),
     (31, 'WebMoney', 'webmoney.png')");
 
+    $setupToken = bin2hex(random_bytes(32));
+    file_put_contents(__DIR__ . '/../../db/setup_token.db', $setupToken);
     echo "Database created.\n";
+    echo "Setup token for database restore: " . $setupToken . "\n";
 } else {
     echo "Database already exist. Checking for upgrades...\n";
 
-    $databaseFile = $webPath . 'db/wallos.db';
     $db = new SQLite3($databaseFile);
     $db->busyTimeout(5000);
 

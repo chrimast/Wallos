@@ -1,25 +1,39 @@
 <?php
+// File Name => Language Name
+$languages = [
+    // English first
+    "en" => ["name" => "English", "dir" => "ltr"],
+    "ar" => ["name" => "العربية", "dir" => "rtl"],
+    // Remaining sorted alphabetically by language code
+    "az" => ["name" => "Azərbaycan dili", "dir" => "ltr"],
+    "ca" => ["name" => "Català", "dir" => "ltr"],
+    "cs" => ["name" => "Čeština", "dir" => "ltr"],
+    "da" => ["name" => "Dansk", "dir" => "ltr"],
+    "de" => ["name" => "Deutsch", "dir" => "ltr"],
+    "el" => ["name" => "Ελληνικά", "dir" => "ltr"],
+    "es" => ["name" => "Español", "dir" => "ltr"],
+    "fr" => ["name" => "Français", "dir" => "ltr"],
+    "hu" => ["name" => "Magyar", "dir" => "ltr"],
+    "id" => ["name" => "bahasa indonesia", "dir" => "ltr"],
+    "it" => ["name" => "Italiano", "dir" => "ltr"],
+    "ja" => ["name" => "日本語", "dir" => "ltr"],
+    "ko" => ["name" => "한국어", "dir" => "ltr"],
+    "nl" => ["name" => "Nederlands", "dir" => "ltr"], 
+    "pl" => ["name" => "Polski", "dir" => "ltr"],
+    "pt" => ["name" => "Português", "dir" => "ltr"],
+    "pt_br" => ["name" => "Português Brasileiro", "dir" => "ltr"],
+    "ro" => ["name" => "Română", "dir" => "ltr"],
+    "ru" => ["name" => "Русский", "dir" => "ltr"],
+    "sl" => ["name" => "Slovenščina", "dir" => "ltr"],
+    "sr_lat" => ["name" => "Srpski", "dir" => "ltr"],
+    "sr" => ["name" => "Српски", "dir" => "ltr"],
+    "tr" => ["name" => "Türkçe", "dir" => "ltr"],
+    "uk" => ["name" => "Українська", "dir" => "ltr"],
+    "vi" => ["name" => "Tiếng Việt", "dir" => "ltr"],
+    "zh_cn" => ["name" => "简体中文", "dir" => "ltr"],
+    "zh_tw" => ["name" => "繁體中文", "dir" => "ltr"],
+];
 
-    // File Name => Language Name
-    $languages = [
-        // English first
-        "en" => "English",
-        // Remaining sorted alphabetically by language code
-        "de" => "Deutsch",
-        "el" => "Ελληνικά",
-        "es" => "Español",
-        "fr" => "Français",
-        "it" => "Italiano",
-        "jp" => "日本語",
-        "pl" => "Polski",
-        "pt" => "Português",
-        "pt_br" => "Português Brasileiro",
-        "ru" => "Русский",
-        "sr_lat" => "Srpski",
-        "sr" => "Српски",
-        "tr" => "Türkçe",
-        "zh_cn" => "简体中文",
-        "zh_tw" => "繁體中文",
-    ]
-
-?>
+$langname_corrections = [
+    "jp" => "ja",
+];

@@ -3,3 +3,11 @@
 
 # Exclude .git directory
 .git/
+.github/
+
+*.md
+.gitignore
+.dockerignore
+
+# README screenshots and capture script; not used at runtime
+/screenshots/

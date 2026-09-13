@@ -4,12 +4,17 @@ $lang = "en";
 if (isset($_COOKIE['language'])) {
     $selectedLanguage = $_COOKIE['language'];
 
+    if (array_key_exists($selectedLanguage, $langname_corrections)) {
+        $selectedLanguage = $langname_corrections[$selectedLanguage];
+    }
+
     if (array_key_exists($selectedLanguage, $languages)) {
         $lang = $selectedLanguage;
     }
 }
 
-function translate($text, $translations) {
+function translate($text, $translations)
+{
     if (array_key_exists($text, $translations)) {
         return $translations[$text];
     } else {

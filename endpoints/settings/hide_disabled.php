@@ -1,33 +1,32 @@
 <?php
 require_once '../../includes/connect_endpoint.php';
-session_start();
-if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
+require_once '../../includes/validate_endpoint.php';
+
+$postData = file_get_contents("php://input");
+$data = json_decode($postData, true);
+
+$hide_disabled = $data['value'];
+
+// Validate input
+if (!isset($hide_disabled) || !is_bool($hide_disabled)) {
     die(json_encode([
         "success" => false,
-        "message" => translate('session_expired', $i18n)
+        "message" => translate("error", $i18n)
     ]));
 }
 
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $postData = file_get_contents("php://input");
-    $data = json_decode($postData, true);
-    
-    $hide_disabled = $data['value'];
+$stmt = $db->prepare('UPDATE settings SET hide_disabled = :hide_disabled WHERE user_id = :userId');
+$stmt->bindParam(':hide_disabled', $hide_disabled, SQLITE3_INTEGER);
+$stmt->bindParam(':userId', $userId, SQLITE3_INTEGER);
 
-    $stmt = $db->prepare('UPDATE settings SET hide_disabled = :hide_disabled');
-    $stmt->bindParam(':hide_disabled', $hide_disabled, SQLITE3_INTEGER);
-
-    if ($stmt->execute()) {
-        die(json_encode([
-            "success" => true,
-            "message" => translate("success", $i18n)
-        ]));
-    } else {
-        die(json_encode([
-            "success" => false,
-            "message" => translate("error", $i18n)
-        ]));
-    }
+if ($stmt->execute()) {
+    die(json_encode([
+        "success" => true,
+        "message" => translate("success", $i18n)
+    ]));
+} else {
+    die(json_encode([
+        "success" => false,
+        "message" => translate("error", $i18n)
+    ]));
 }
-
-?>
